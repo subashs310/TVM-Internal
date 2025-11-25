@@ -2,51 +2,87 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:3011/users';
-  private userRole: string | null = null;
+  private loginUrl = 'http://localhost:8080/login';
+  private registerUrl = 'http://localhost:8080/register';
+
   constructor(private http: HttpClient, private router: Router) {}
-  // login(username: string, password: string): Observable<boolean> {
-  //   return this.http.get<any[]>(`${this.baseUrl}?username=${username}&password=${password}`).pipe(
-  //     map((users) => {
-  //       if (users.length > 0) {
-  //         const user = users[0];
-  //         this.userRole = user.role;
-  //         localStorage.setItem('userRole', user.role);
-  //         return true;
-  //       } else {
-  //         return false;
-  //       }
-  //     })
-  //   );
-  // }
-  
-  login(emailOrPhone: string, password: string): Observable<any> {
-    return this.http.get<any[]>(this.apiUrl).pipe(
-      map(users => users.find(user => 
-        (user.email === emailOrPhone || user.phone === emailOrPhone) && user.password === password
-      ) || null)
-    );
+
+  /** 🔹 LOGIN */
+  login(username: string, password: string): Observable<any> {
+    return this.http.post<any>(this.loginUrl, { username, password });
   }
-  register(user: any): Observable<any> {
-    return this.http.post<any>(this.apiUrl, user);
+
+  /** 🔹 REGISTER */
+  register(username: string, password: string): Observable<any> {
+    return this.http.post<any>(this.registerUrl, { username, password });
   }
+
   logout() {
-    this.userRole = null;
-    localStorage.removeItem('userRole');
+    localStorage.removeItem('token');
     this.router.navigate(['/login']);
   }
+
+  setToken(token: string) {
+    localStorage.setItem('token', token);
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('token');
+  }
+
+  decodeToken(token: string): any {
+    try {
+      return JSON.parse(atob(token.split('.')[1]));
+    } catch (error) {
+      return null;
+    }
+  }
+
+  isTokenExpired(): boolean {
+    const token = this.getToken();
+    if (!token) return true;
+
+    const decoded = this.decodeToken(token);
+    if (!decoded || !decoded.exp) return true;
+
+    const expiryTime = decoded.exp * 1000; 
+    return Date.now() > expiryTime;
+  }
+
+  isLoggedIn(): boolean {
+    return !!this.getToken() && !this.isTokenExpired();
+  }
+
+  generateStaticToken() {
+    const header = { alg: 'HS256', typ: 'JWT' };
+    const now = Math.floor(Date.now() / 1000); 
+    const payload = {
+      sub: 'oohn',
+      iat: now,
+      exp: now + 30, 
+    };
+
+    const base64url = (obj: any) =>
+      btoa(JSON.stringify(obj))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+    const token = `${base64url(header)}.${base64url(payload)}.STATIC_SIGNATURE`;
+    this.setToken(token);
+  }
+
+  
   getUserRole(): string | null {
+    // Get role from localStorage (or implement your logic)
     return localStorage.getItem('userRole');
   }
-  isAdmin(): boolean {
+    isAdmin(): boolean {
     return this.getUserRole() === 'admin';
-  }
-  isUser(): boolean {
-    return this.getUserRole() === 'user';
   }
 }
