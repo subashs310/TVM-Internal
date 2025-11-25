@@ -9,13 +9,16 @@ import { AuthService } from './AllServices/AuthService.service';
   styleUrls: ['./app.component.scss'],
 })
 export class AppComponent implements OnInit, OnDestroy {
-
   title = 'fleet-management';
   activeLink: string = 'home';
   isExpanded = true;
   showPopup = true;
   private routerSubscription: Subscription | undefined;
   isLoggedIn = false;
+
+  // NEW: define missing properties
+  showLayout: boolean = false; 
+  dropdownOpen: boolean = false;
 
   menuItems = [
     { link: 'home', icon: 'fa-solid fa-house', title: 'Home', path: 'new-Home' },
@@ -34,17 +37,19 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.isLoggedIn = this.authservice.isLoggedIn();
+    this.showLayout = this.isLoggedIn;
 
     this.routerSubscription = this.router.events.subscribe((event) => {
       if (event instanceof NavigationEnd) {
         this.isLoggedIn = this.authservice.isLoggedIn();
+        this.showLayout = this.isLoggedIn;
         this.updateActiveLink();
         this.checkTokenExpiry();
       }
     });
 
-    // Optional: check token expiry every 30 seconds
-    setInterval(() => this.checkTokenExpiry(), 30000);
+    // Check token expiry periodically
+    setInterval(() => this.checkTokenExpiry(), 1000);
   }
 
   ngOnDestroy() {
@@ -56,10 +61,10 @@ export class AppComponent implements OnInit, OnDestroy {
       alert('Your session has expired. Please login again.');
       this.authservice.logout();
       this.isLoggedIn = false;
+      this.showLayout = false;
     }
   }
 
-  // Determine current active link
   updateActiveLink(): void {
     const currentPath = this.router.url;
     const activeItem = this.menuItems.find(item => currentPath.includes(item.path));
@@ -72,6 +77,7 @@ export class AppComponent implements OnInit, OnDestroy {
       if (confirmed) {
         this.authservice.logout();
         this.isLoggedIn = false;
+        this.showLayout = false;
       }
       return;
     }
@@ -80,37 +86,21 @@ export class AppComponent implements OnInit, OnDestroy {
     this.router.navigate([path]).catch(err => console.error('Navigation error:', err));
   }
 
-  // Toggle dropdown only when clicking inside avatar section
   toggleDropdown(): void {
     this.dropdownOpen = !this.dropdownOpen;
   }
 
-  // Close dropdown when clicking anywhere outside
   @HostListener('document:click')
   closeDropdown(): void {
     this.dropdownOpen = false;
   }
 
-  // Logout function
-  logout(): void {
-    localStorage.clear();
-    this.dropdownOpen = false;
-    this.router.navigate(['/login']);
-  }
-
-  // After login from <app-login>
   handleLoginSuccess(): void {
     this.isLoggedIn = true;
     this.showLayout = true;
-    localStorage.setItem('token', 'logged-in');
-    this.router.navigate(['/home']);
   }
 
   navigateToProfile(): void {
     this.router.navigate(['/profile']);
-  }
-
-  handleLoginSuccess(): void {
-    this.isLoggedIn = true;
   }
 }

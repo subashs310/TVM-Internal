@@ -76,4 +76,13 @@ export class AuthService {
     const token = `${base64url(header)}.${base64url(payload)}.STATIC_SIGNATURE`;
     this.setToken(token);
   }
+
+  
+  getUserRole(): string | null {
+    // Get role from localStorage (or implement your logic)
+    return localStorage.getItem('userRole');
+  }
+    isAdmin(): boolean {
+    return this.getUserRole() === 'admin';
+  }
 }
